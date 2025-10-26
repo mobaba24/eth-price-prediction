@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const EthIcon: React.FC<{className?: string}> = ({ className }) => (

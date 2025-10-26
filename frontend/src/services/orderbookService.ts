@@ -1,4 +1,3 @@
-
 import { OrderBookFeatureData } from '../types';
 
 // Use an array of endpoints for resilience, similar to the price fetcher

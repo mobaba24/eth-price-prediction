@@ -1,4 +1,3 @@
-
 const calculateEMASeries = (prices: number[], period: number) : (number|null)[] | null => {
   if (prices.length < period) return null;
   const k = 2 / (period + 1);

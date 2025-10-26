@@ -1,24 +1,18 @@
-
 version: '3.8'
 
 services:
   frontend:
     build: ./frontend
     ports:
-      - "8080:80" # Access UI at http://localhost:8080
+      - "8080:80" # Access the UI at http://your_server_ip:8080
     depends_on:
       - backend
 
   backend:
     build: ./backend
-    # The backend is not exposed to the host, only to the frontend container
-    # ports:
-    #   - "3001:3001" 
+    # The backend is not exposed directly to the host machine.
+    # It's only accessible from the frontend container.
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     env_file:
       - ./.env
-
-volumes:
-  postgres_data: # Define a volume for data persistence, even though we are not using a DB yet.
-

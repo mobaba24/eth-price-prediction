@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { PriceData, PredictionResult, AiPrediction, OrderBookFeatureData, OrderBookPrediction, PredictionOutcome, AccuracyStats, OrderBookPredictionOutcome, OrderBookAccuracyStats } from './types';
 import { getEthPricePrediction } from './services/geminiService';
@@ -260,7 +259,6 @@ const App: React.FC = () => {
           const { prediction } = outcome;
           if (Date.now() - prediction.timestamp >= timeframeMap[prediction.timeframe]) {
             const actualDirection = latestPrice > prediction.priceAtPrediction ? 'UP' : 'DOWN';
-// FIX: Explicitly type `newStatus` to prevent TypeScript from widening it to the generic 'string' type.
             const newStatus: 'CORRECT' | 'INCORRECT' = actualDirection === prediction.direction ? 'CORRECT' : 'INCORRECT';
             return { ...outcome, status: newStatus };
           }
@@ -285,7 +283,6 @@ const App: React.FC = () => {
                         return { ...outcome, status: 'NEUTRAL' as const };
                     }
                     const actualDirection = latestPrice > priceAtPrediction ? 'UP' : 'DOWN';
-// FIX: Explicitly type `newStatus` to prevent TypeScript from widening it to the generic 'string' type.
                     const newStatus: 'CORRECT' | 'INCORRECT' = actualDirection === prediction.direction ? 'CORRECT' : 'INCORRECT';
                     return { ...outcome, status: newStatus };
                 }
@@ -321,7 +318,7 @@ const App: React.FC = () => {
     setIsPredicting(true);
     if (!isRateLimitedRef.current) setError(null);
     try {
-      const results: AiPrediction[] = await getEthPricePrediction(currentPriceHistory.slice(-60), orderBookFeaturesRef.current, accuracyStats);
+      const results: AiPrediction[] = await getEthPricePrediction(currentPriceHistory, orderBookFeaturesRef.current, accuracyStats);
       const now = Date.now();
       const priceAtPrediction = currentPriceHistory[currentPriceHistory.length - 1]?.price;
       if (typeof priceAtPrediction !== 'number') throw new Error("Could not get current price for prediction.");
@@ -342,7 +339,8 @@ const App: React.FC = () => {
           setError(null);
         }, RATE_LIMIT_COOLDOWN);
       } else {
-        setError('Failed to get prediction from AI.');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to get prediction from AI.';
+        setError(errorMessage);
         setCurrentPredictions(null);
       }
     } finally {

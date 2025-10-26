@@ -1,4 +1,3 @@
-
 import { AiPrediction, PriceData, OrderBookFeatureData, AccuracyStats } from '../types';
 import { calculateRSI, calculateMACD, calculateBBands, calculateStochastic } from '../utils/technicalIndicators';
 

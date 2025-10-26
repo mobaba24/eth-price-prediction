@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { OrderBookPrediction } from '../types';
 import CountdownCircle from './CountdownCircle';

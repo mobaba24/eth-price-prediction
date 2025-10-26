@@ -1,4 +1,3 @@
-
 export interface PriceData {
   timestamp: number;
   price: number; // Represents close price
