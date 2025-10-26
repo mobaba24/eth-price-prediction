@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { PriceData, PredictionResult, AiPrediction, OrderBookFeatureData, OrderBookPrediction, PredictionOutcome, AccuracyStats, OrderBookPredictionOutcome, OrderBookAccuracyStats } from './types';
-import { getEthPricePrediction } from './services/geminiService';
+import { getAiPrediction } from './services/aiService';
 import { getOrderBookFeatures } from './services/orderbookService';
 import PriceChart from './components/PriceChart';
 import PredictionCard from './components/PredictionCard';
@@ -318,7 +318,7 @@ const App: React.FC = () => {
     setIsPredicting(true);
     if (!isRateLimitedRef.current) setError(null);
     try {
-      const results: AiPrediction[] = await getEthPricePrediction(currentPriceHistory, orderBookFeaturesRef.current, accuracyStats);
+      const results: AiPrediction[] = await getAiPrediction(currentPriceHistory, orderBookFeaturesRef.current, accuracyStats);
       const now = Date.now();
       const priceAtPrediction = currentPriceHistory[currentPriceHistory.length - 1]?.price;
       if (typeof priceAtPrediction !== 'number') throw new Error("Could not get current price for prediction.");
@@ -329,7 +329,7 @@ const App: React.FC = () => {
       setAiPredictionOutcomes(prev => [...predictionsWithMetadata.map(p => ({ prediction: p, status: 'PENDING' as const })), ...prev].slice(0, MAX_OUTCOME_HISTORY));
 
     } catch (err) {
-      if (err instanceof Error && (err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED'))) {
+      if (err instanceof Error && (err.message.includes('429') || err.message.toLowerCase().includes('rate limit'))) {
         setError(`Rate limit reached. Predictions paused for ${RATE_LIMIT_COOLDOWN / 1000} seconds.`);
         setIsRateLimited(true);
         setCurrentPredictions(null);
@@ -339,8 +339,8 @@ const App: React.FC = () => {
           setError(null);
         }, RATE_LIMIT_COOLDOWN);
       } else {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to get prediction from AI.';
-        setError(errorMessage);
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to get prediction: ${errorMessage}`);
         setCurrentPredictions(null);
       }
     } finally {
