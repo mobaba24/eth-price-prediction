@@ -11,7 +11,7 @@ app.use(express.json({ limit: '1mb' }));
 
 // --- OpenAI Client Initialization ---
 const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey || apiKey === "your_openai_api_key_goes_here") {
+if (!apiKey || apiKey.includes("YourSecret")) {
   console.error("OPENAI_API_KEY environment variable not set correctly. The application will exit.");
   process.exit(1);
 }
