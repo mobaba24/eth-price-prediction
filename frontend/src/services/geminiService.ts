@@ -1,8 +1,11 @@
+
 import { AiPrediction, PriceData, OrderBookFeatureData, AccuracyStats } from '../types';
+import { calculateRSI, calculateMACD, calculateBBands, calculateStochastic } from '../utils/technicalIndicators';
+
 
 // The function now calls our own backend, not the Gemini API directly.
 // The backend will securely handle the API key and communication with Gemini.
-const BACKEND_API_URL = '/api/predict'; // This will be proxied by Nginx in a production setup, or works with CORS in dev.
+const BACKEND_API_URL = '/api/predict';
 
 export const getEthPricePrediction = async (
     priceHistory: PriceData[],
@@ -10,21 +13,40 @@ export const getEthPricePrediction = async (
     accuracyStats: AccuracyStats
 ): Promise<AiPrediction[]> => {
   try {
+    // Calculate indicators on the client-side and send them to the backend
+    const prices = priceHistory.map(p => p.price);
+    const highs = priceHistory.map(p => p.high);
+    const lows = priceHistory.map(p => p.low);
+
+    const indicators = {
+      rsi: calculateRSI(prices),
+      macd: calculateMACD(prices),
+      bbands: calculateBBands(prices),
+      stochastic: calculateStochastic(highs, lows, prices),
+    };
+
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        priceHistory,
+        priceHistory: priceHistory.slice(-60), // Send only last 60s
         orderBookFeatures,
         accuracyStats,
+        indicators,
       }),
     });
 
     if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Backend returned status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({ message: `Backend returned status: ${response.status}`}));
+        const errorMessage = errorData.details || errorData.message || `An unknown error occurred. Status: ${response.status}`;
+        
+        // Specific check for rate limit error from our backend
+        if (response.status === 429 || errorMessage.toLowerCase().includes('rate') || errorMessage.toLowerCase().includes('exhausted')) {
+             throw new Error("429: Rate limit reached.");
+        }
+        throw new Error(errorMessage);
     }
 
     const predictions: AiPrediction[] = await response.json();
@@ -38,10 +60,7 @@ export const getEthPricePrediction = async (
 
   } catch (error) {
     console.error("Error calling backend service:", error);
-    // Re-throw a more user-friendly error
-    if (error instanceof Error && error.message.includes('rate limit')) {
-        throw error;
-    }
-    throw new Error('Failed to fetch prediction from the backend server.');
+    // Re-throw the error so the UI can handle it
+    throw error;
   }
 };
