@@ -1,0 +1,5 @@
+{
+  "name": "ETH Price Predictor",
+  "description": "A web application that uses AI to predict the short-term price movement of Ethereum (ETH) and visualizes real-time price data.",
+  "requestFramePermissions": []
+}
