@@ -1,7 +1,9 @@
 
 
+
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { PriceData, PredictionResult, AiPrediction, OrderBookFeatureData, OrderBookPrediction, PredictionOutcome, AccuracyStats, OrderBookPredictionOutcome, OrderBookAccuracyStats } from './types';
+import { PriceData, PredictionResult, AiPrediction, OrderBookFeatureData, OrderBookPrediction, PredictionOutcome, AccuracyStats, OrderBookPredictionOutcome, OrderBookAccuracyStats, OrderBookTimeframe, ImbalanceData } from './types';
 import { getEthPricePrediction } from './services/geminiService';
 import { getOrderBookFeatures } from './services/orderbookService';
 import PriceChart from './components/PriceChart';
@@ -12,10 +14,11 @@ import Footer from './components/Footer';
 import PredictionHistory from './components/PredictionHistory';
 import OrderBookSignalCard from './components/OrderBookSignalCard';
 import PerformanceTracker from './components/PerformanceTracker';
+import ImbalanceChart from './components/ImbalanceChart';
 
 const MAX_HISTORY_LENGTH = 120; // Keep last 2 minutes of data (120 seconds)
-const PREDICTION_INTERVAL = 30000; // 30 seconds
-const RATE_LIMIT_COOLDOWN = 60000; // 60 seconds
+const PREDICTION_INTERVAL = 60000; // 60 seconds
+const RATE_LIMIT_COOLDOWN = 90000; // 90 seconds
 const MAX_PREDICTION_HISTORY_ITEMS = 15;
 const MAX_OUTCOME_HISTORY = 60; // Keep track of the last 60 individual predictions for accuracy stats
 
@@ -27,7 +30,7 @@ const BINANCE_ENDPOINTS = [
 const BYBIT_ENDPOINT = 'https://api.bybit.com/v5/market/tickers?category=spot&symbol=ETHUSDT';
 
 const generateSmartOrderBookPrediction = (
-  timeframe: '15s' | '30s' | '60s',
+  timeframe: OrderBookTimeframe,
   currentFeatures: OrderBookFeatureData,
   previousFeatures: OrderBookFeatureData | null,
   priceChange: number,
@@ -83,6 +86,7 @@ const generateSmartOrderBookPrediction = (
 
 const App: React.FC = () => {
   const [priceHistory, setPriceHistory] = useState<PriceData[]>([]);
+  const [imbalanceHistory, setImbalanceHistory] = useState<ImbalanceData[]>([]);
   const [currentPredictions, setCurrentPredictions] = useState<PredictionResult[] | null>(null);
   const [predictionHistory, setPredictionHistory] = useState<PredictionResult[]>([]);
   const [aiPredictionOutcomes, setAiPredictionOutcomes] = useState<PredictionOutcome[]>([]);
@@ -92,6 +96,7 @@ const App: React.FC = () => {
   const [currentEndpointIndex, setCurrentEndpointIndex] = useState(0);
   const [orderBookFeatures, setOrderBookFeatures] = useState<OrderBookFeatureData | null>(null);
   const [orderBookPredictions, setOrderBookPredictions] = useState<OrderBookPrediction[]>([
+    { timeframe: '5s', direction: 'NEUTRAL', confidence: 0, timestamp: 0 },
     { timeframe: '15s', direction: 'NEUTRAL', confidence: 0, timestamp: 0 },
     { timeframe: '30s', direction: 'NEUTRAL', confidence: 0, timestamp: 0 },
     { timeframe: '60s', direction: 'NEUTRAL', confidence: 0, timestamp: 0 },
@@ -167,7 +172,12 @@ const App: React.FC = () => {
       ]);
       
       previousOrderBookFeaturesRef.current = orderBookFeaturesRef.current;
-      if (features) setOrderBookFeatures(features);
+      if (features) {
+        setOrderBookFeatures(features);
+        setImbalanceHistory(prev => 
+            [...prev, { timestamp: Date.now(), imbalance: features.imbalance }].slice(-MAX_HISTORY_LENGTH)
+        );
+      }
 
       const prices = [binanceResult?.price, bybitPrice, kucoinPrice].filter((p): p is number => p !== null && !isNaN(p));
       if (prices.length === 0) return;
@@ -189,8 +199,8 @@ const App: React.FC = () => {
   }, [currentEndpointIndex]);
 
   const orderBookAccuracyStats = useMemo((): OrderBookAccuracyStats => {
-    const stats: OrderBookAccuracyStats = { '15s': null, '30s': null, '60s': null };
-    (['15s', '30s', '60s'] as const).forEach(tf => {
+    const stats: OrderBookAccuracyStats = { '5s': null, '15s': null, '30s': null, '60s': null };
+    (['5s', '15s', '30s', '60s'] as const).forEach(tf => {
         const relevant = orderBookOutcomesRef.current.filter(o => o.prediction.timeframe === tf && o.prediction.direction !== 'NEUTRAL' && o.status !== 'PENDING');
         if (relevant.length > 0) {
             const correct = relevant.filter(o => o.status === 'CORRECT').length;
@@ -204,7 +214,7 @@ const App: React.FC = () => {
   accuracyStatsRef.current = orderBookAccuracyStats;
 
   useEffect(() => {
-    const createPredictionLoop = (timeframe: '15s' | '30s' | '60s', interval: number) => {
+    const createPredictionLoop = (timeframe: OrderBookTimeframe, interval: number) => {
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
         const update = () => {
@@ -237,11 +247,13 @@ const App: React.FC = () => {
         };
     };
 
+    const cleanup5s = createPredictionLoop('5s', 5000);
     const cleanup15s = createPredictionLoop('15s', 15000);
     const cleanup30s = createPredictionLoop('30s', 30000);
     const cleanup60s = createPredictionLoop('60s', 60000);
 
     return () => {
+        cleanup5s();
         cleanup15s();
         cleanup30s();
         cleanup60s();
@@ -252,7 +264,7 @@ const App: React.FC = () => {
     const latestPrice = priceHistory[priceHistory.length - 1]?.price;
     if (!latestPrice) return;
 
-    const timeframeMap = { '15s': 15000, '30s': 30000, '60s': 60000 };
+    const timeframeMap: Record<OrderBookTimeframe, number> = { '5s': 5000, '15s': 15000, '30s': 30000, '60s': 60000 };
 
     const resolveAiOutcomes = () => {
       if (aiPredictionOutcomes.length === 0) return;
@@ -379,7 +391,13 @@ const App: React.FC = () => {
                 <PriceChart data={priceHistory} />
               </div>
             </div>
-             <OrderBookSignalCard predictions={orderBookPredictions} />
+            <div className="bg-gray-800/50 rounded-xl shadow-2xl p-4 md:p-6 border border-gray-700">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-200 mb-4">Order Book Imbalance (Live)</h2>
+                <div className="h-48 md:h-64">
+                    <ImbalanceChart data={imbalanceHistory} />
+                </div>
+            </div>
+            <OrderBookSignalCard predictions={orderBookPredictions} />
             <div className="bg-gray-800/50 rounded-xl shadow-2xl p-4 md:p-6 border border-gray-700">
               <PredictionHistory history={predictionHistory} />
             </div>

@@ -1,6 +1,7 @@
 
+
 import React, { useMemo } from 'react';
-import { OrderBookPredictionOutcome } from '../types';
+import { OrderBookPredictionOutcome, OrderBookTimeframe } from '../types';
 
 interface PerformanceTrackerProps {
   outcomes: OrderBookPredictionOutcome[];
@@ -9,7 +10,8 @@ interface PerformanceTrackerProps {
 const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ outcomes }) => {
 
   const accuracyStats = useMemo(() => {
-    const stats: Record<'15s' | '30s' | '60s', { correct: number; total: number; accuracy: number }> = {
+    const stats: Record<OrderBookTimeframe, { correct: number; total: number; accuracy: number }> = {
+      '5s': { correct: 0, total: 0, accuracy: 0 },
       '15s': { correct: 0, total: 0, accuracy: 0 },
       '30s': { correct: 0, total: 0, accuracy: 0 },
       '60s': { correct: 0, total: 0, accuracy: 0 },
@@ -35,7 +37,7 @@ const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ outcomes }) => 
     return stats;
   }, [outcomes]);
 
-  const renderStat = (timeframe: '15s' | '30s' | '60s') => {
+  const renderStat = (timeframe: OrderBookTimeframe) => {
     const stat = accuracyStats[timeframe];
     const accuracyPercent = (stat.accuracy * 100).toFixed(1);
 
@@ -62,7 +64,8 @@ const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ outcomes }) => 
         <h3 className="text-lg font-semibold text-gray-200">Order Book Model Performance</h3>
         <p className="text-xs text-gray-400 mt-1">Model confidence is adaptively adjusted based on this accuracy data.</p>
       </div>
-      <div className="flex-grow flex flex-col justify-center space-y-4 px-1">
+      <div className="flex-grow flex flex-col justify-center space-y-3 px-1">
+        {renderStat('5s')}
         {renderStat('15s')}
         {renderStat('30s')}
         {renderStat('60s')}

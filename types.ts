@@ -1,4 +1,5 @@
 
+
 export interface PriceData {
   timestamp: number;
   price: number; // Represents close price
@@ -31,8 +32,10 @@ export interface OrderBookFeatureData {
 
 export type OrderBookPredictionDirection = 'UP' | 'DOWN' | 'NEUTRAL';
 
+export type OrderBookTimeframe = '5s' | '15s' | '30s' | '60s';
+
 export interface OrderBookPrediction {
-  timeframe: '15s' | '30s' | '60s';
+  timeframe: OrderBookTimeframe;
   direction: OrderBookPredictionDirection;
   confidence: number;
   timestamp: number;
@@ -55,6 +58,11 @@ export type AccuracyStats = Record<
 >;
 
 export type OrderBookAccuracyStats = Record<
-  '15s' | '30s' | '60s', 
+  OrderBookTimeframe, 
   { correct: number; total: number; accuracy: number; } | null
 >;
+
+export interface ImbalanceData {
+  timestamp: number;
+  imbalance: number;
+}

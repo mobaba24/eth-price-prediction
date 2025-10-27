@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { OrderBookPrediction } from '../types';
 import CountdownCircle from './CountdownCircle';
@@ -26,6 +27,7 @@ const NeutralIcon: React.FC<{className?: string}> = ({className}) => (
 );
 
 const initialCountdowns = {
+    '5s': 5,
     '15s': 15,
     '30s': 30,
     '60s': 60,
@@ -66,6 +68,7 @@ const OrderBookSignalCard: React.FC<OrderBookSignalCardProps> = ({ predictions }
     useEffect(() => {
         const timer = setInterval(() => {
             setCountdowns(prev => ({
+                '5s': Math.max(0, prev['5s'] - 1),
                 '15s': Math.max(0, prev['15s'] - 1),
                 '30s': Math.max(0, prev['30s'] - 1),
                 '60s': Math.max(0, prev['60s'] - 1),
@@ -89,7 +92,7 @@ const OrderBookSignalCard: React.FC<OrderBookSignalCardProps> = ({ predictions }
         const totalSeconds = initialCountdowns[timeframeKey];
 
         return (
-             <div key={prediction.timeframe} className="relative bg-gray-900/50 p-4 rounded-lg text-center flex flex-col justify-between h-full">
+             <div key={prediction.timeframe} className="relative bg-gray-900/50 p-4 rounded-lg text-center flex flex-col justify-between h-full min-h-[120px]">
                 <div className="absolute top-3 right-3">
                     <CountdownCircle seconds={currentCountdown} totalSeconds={totalSeconds} />
                 </div>
@@ -110,13 +113,13 @@ const OrderBookSignalCard: React.FC<OrderBookSignalCardProps> = ({ predictions }
   return (
     <div className="bg-gray-800/50 rounded-xl shadow-2xl p-4 md:p-6 border border-gray-700">
       <h3 className="text-lg font-semibold text-gray-200 mb-4 text-center">Order Book Pressure Prediction</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {predictions ? (
             [...predictions]
               .sort((a,b) => parseInt(a.timeframe) - parseInt(b.timeframe))
               .map(renderPredictionBox)
         ) : (
-            [...Array(3)].map((_, i) => (
+            [...Array(4)].map((_, i) => (
                 <div key={i} className="bg-gray-900/50 p-4 rounded-lg text-center animate-pulse h-32">
                      <div className="h-5 bg-gray-700 rounded w-1/3 mx-auto"></div>
                      <div className="h-8 bg-gray-700 rounded w-3/4 mx-auto mt-3"></div>
